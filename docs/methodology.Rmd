@@ -37,9 +37,17 @@ $$
 X^TWX = \bar{X}^T\bar{W}\bar{X}
 $$
 
+- index vector (key here)
+- Algo to create W
+- Also show how to compute $X^Ty$ in this system
+- Small showcase in R
+
 ## Binning numerical features
 
 The idea here is to discretize the vector $x\in\mathbb{R}^n$ to a vector $\bar{x}$ where the number of unique values $\text{unique}(\bar{x}) = m_u < n_u = \text{unique}(x)$. The vector $\bar{x}$ is then used for faster model matrix crossproducts as explained [above](#faster-model-matrix-crossproducts-with-discretized-covariates).
+
+- How to best discretize?
+- Small showcase in R
 
 # Microbenchmark
 
