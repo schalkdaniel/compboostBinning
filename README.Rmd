@@ -1,0 +1,31 @@
+---
+utput: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "Readme_files/"
+)
+options(width=100)
+```
+
+
+## C++ Binning Implementation of Compboost
+
+This repository contains the binning  implementation of [compboost](https://compboost.org) by providing the functions directly without any bloated code it.
+
+__Feel free to extend the algorithms, improve performance, or use for your own projets.__
+
+## Installation
+
+#### Developer version:
+
+```{r, eval=FALSE}
+devtools::install_github("schalkdaniel/compboostBinning")
+```
+
+
