@@ -9,7 +9,7 @@ Description: A C++ implementation of binning techniques to increase the matrix m
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 6.1.0
+RoxygenNote: 7.1.0
 Imports:
     Rcpp,
     RcppArmadillo,

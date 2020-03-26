@@ -22,7 +22,7 @@ test_that("Demmler-Reinsch-Orthogonalization can be computed", {
   xtwx_full = t(X_full * w)  %*% X_full
   xtwx = binnedMatMult(X = X, k = k-1, w = w)
 
-  expect_equal(all.equal(xtwx_full, xtwx, check.attributes = FALSE))
+  expect_true(all.equal(xtwx_full, xtwx, check.attributes = FALSE))
 
   y = runif(nsim)
 

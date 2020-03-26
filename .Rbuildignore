@@ -1,4 +1,5 @@
 other
-.travis.yml
 ^appveyor\.yml$
 ^\.travis\.yml$
+docs
+README.Rmd
