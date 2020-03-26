@@ -1,0 +1,3 @@
+other
+.travis.yml
+^appveyor\.yml$
