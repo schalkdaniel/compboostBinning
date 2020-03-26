@@ -144,7 +144,7 @@ a.sourceLine {
 <li><a href="https://link.springer.com/content/pdf/10.1007/s11222-019-09864-2.pdf">Zheyuan Li, Simon N. Wood: “Faster model matrix crossproducts for large generalized linear models with discretized covariates”</a></li>
 <li><a href="https://link.springer.com/article/10.1007/s11222-012-9366-0">Lang et al.: “Multilevel structured additive regression”</a>
 <ul>
-<li>First formulation of <em>binning</em> (page 8, 3.3. remak 2)</li>
+<li>First formulation of <em>binning</em> (page 8, 3.3. remark 2)</li>
 </ul></li>
 </ul>
 </div>
@@ -156,14 +156,46 @@ a.sourceLine {
 <h1>Methodology</h1>
 <div id="faster-model-matrix-crossproducts-with-discretized-covariates" class="section level2">
 <h2>Faster model matrix crossproducts with discretized covariates</h2>
+<div id="general-idea" class="section level3">
+<h3>General idea</h3>
 <p>The linear models requires the computation of the matrix <span class="math inline">\(X^TWX\)</span> where <span class="math inline">\(X\in\mathbb{R}^{n\times p}\)</span> is the design matrix and <span class="math inline">\(W\)</span> a weight matrix. We restrict our scenario here to just diagonal weight matrices and <span class="math inline">\(X\)</span> as base of a one feature. This does not necessarily mean that <span class="math inline">\(X\in\mathbb{R}^{1\times n}\)</span> but that <span class="math inline">\(X\)</span> is created as basis of a feature vector <span class="math inline">\(x\in \mathbb{R}^n\)</span> (for instance spline basis).</p>
 <p>The core idea of Simon Wood and Zheyuan Li is to create another matrix <span class="math inline">\(\bar{X}\in\mathbb{R}^{\bar{n}\times p}\)</span> and <span class="math inline">\(\bar{W}\in\mathbb{R}^{\bar{n}\times\bar{n}}\)</span> based on the unique values of <span class="math inline">\(x\)</span> so that the following property holds: <span class="math display">\[
 X^TWX = \bar{X}^T\bar{W}\bar{X}
 \]</span></p>
 </div>
+<div id="index-vector-for-mapping" class="section level3">
+<h3>Index vector for mapping</h3>
+<p>The mapping of <span class="math inline">\(\bar{X}\)</span> to <span class="math inline">\(X\)</span> is defined by an index vector <span class="math inline">\(k\)</span>, such that <span class="math inline">\(X(i,.) = \bar{X}(k(i), .)\)</span>, for example: <span class="math display">\[
+X = \left(\begin{array}{c}
+3.1 \\ 1.2 \\ 2.4 \\ 1.2 \\ 1.2 \\ 2.4 \\ 3.1
+\end{array}\right) \qquad \bar{X} = \left(\begin{array}{c}
+3.1 \\ 1.2 \\ 2.4
+\end{array}\right)\qquad k = \left(\begin{array}{c}
+1 \\ 2 \\ 3 \\ 2 \\ 2 \\ 3 \\ 1
+\end{array}\right)
+\]</span></p>
+</div>
+<div id="algorithm-to-create-weight-matrix" class="section level3">
+<h3>Algorithm to create weight matrix</h3>
+<p>Again, we assume that <span class="math inline">\(W\)</span> has diagonal form <span class="math inline">\(W = \text{diag}(w)\)</span>. The following algorithm explains how to get from <span class="math inline">\(w\)</span> to <span class="math inline">\(\bar{w}\)</span> where <span class="math inline">\(\bar{W} = \text{diag}(\bar{w})\)</span> (see Zheyuan Li, Simon N. Wood):</p>
+<ol style="list-style-type: decimal">
+<li>Set <span class="math inline">\(\bar{w} = \vec{0}\)</span></li>
+<li>For <span class="math inline">\(i = 1, \dots, n\)</span> do <span class="math inline">\(\bar{w}(k(i)) = \bar{w}(k(i)) + w(i)\)</span>$</li>
+<li>Return <span class="math inline">\(\bar{w}\)</span></li>
+</ol>
+<ul>
+<li>Also show how to compute <span class="math inline">\(X^Ty\)</span> in this system</li>
+<li>Small showcase in R</li>
+</ul>
+</div>
+</div>
 <div id="binning-numerical-features" class="section level2">
 <h2>Binning numerical features</h2>
 <p>The idea here is to discretize the vector <span class="math inline">\(x\in\mathbb{R}^n\)</span> to a vector <span class="math inline">\(\bar{x}\)</span> where the number of unique values <span class="math inline">\(\text{unique}(\bar{x}) = m_u &lt; n_u = \text{unique}(x)\)</span>. The vector <span class="math inline">\(\bar{x}\)</span> is then used for faster model matrix crossproducts as explained <a href="#faster-model-matrix-crossproducts-with-discretized-covariates">above</a>.</p>
+<ul>
+<li>How to best discretize?</li>
+<li>Small showcase in R</li>
+</ul>
 </div>
 </div>
 <div id="microbenchmark" class="section level1">

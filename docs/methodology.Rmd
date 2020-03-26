@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 
 - [Zheyuan Li, Simon N. Wood: "Faster model matrix crossproducts for large generalized linear models with discretized covariates"](https://link.springer.com/content/pdf/10.1007/s11222-019-09864-2.pdf)
 - [Lang et al.: "Multilevel structured additive regression"](https://link.springer.com/article/10.1007/s11222-012-9366-0)
-    - First formulation of _binning_ (page 8, 3.3. remak 2)
+    - First formulation of _binning_ (page 8, 3.3. remark 2)
 
 
 # Goal
@@ -30,6 +30,8 @@ knitr::opts_chunk$set(
 
 ## Faster model matrix crossproducts with discretized covariates
 
+### General idea
+
 The linear models requires the computation of the matrix $X^TWX$ where $X\in\mathbb{R}^{n\times p}$ is the design matrix and $W$ a weight matrix. We restrict our scenario here to just diagonal weight matrices and $X$ as base of a one feature. This does not necessarily mean that $X\in\mathbb{R}^{1\times n}$ but that $X$ is created as basis of a feature vector $x\in \mathbb{R}^n$ (for instance spline basis).
 
 The core idea of Simon Wood and Zheyuan Li is to create another matrix $\bar{X}\in\mathbb{R}^{\bar{n}\times p}$ and $\bar{W}\in\mathbb{R}^{\bar{n}\times\bar{n}}$ based on the unique values of $x$ so that the following property holds:
@@ -37,8 +39,30 @@ $$
 X^TWX = \bar{X}^T\bar{W}\bar{X}
 $$
 
-- index vector (key here)
-- Algo to create W
+### Index vector for mapping
+
+The mapping of $\bar{X}$ to $X$ is defined by an index vector $k$, such that $X(i,.) = \bar{X}(k(i), .)$, for example:
+$$
+X = \left(\begin{array}{c}
+3.1 \\ 1.2 \\ 2.4 \\ 1.2 \\ 1.2 \\ 2.4 \\ 3.1
+\end{array}\right) \qquad \bar{X} = \left(\begin{array}{c}
+3.1 \\ 1.2 \\ 2.4
+\end{array}\right)\qquad k = \left(\begin{array}{c}
+1 \\ 2 \\ 3 \\ 2 \\ 2 \\ 3 \\ 1
+\end{array}\right)
+$$
+
+### Algorithm to create weight matrix
+
+Again, we assume that $W$ has diagonal form $W = \text{diag}(w)$. The following algorithm explains how to get from $w$ to $\bar{w}$ where $\bar{W} = \text{diag}(\bar{w})$ (see Zheyuan Li, Simon N. Wood):
+
+1. Set $\bar{w} = \vec{0}$
+1. For $i = 1, \dots, n$ do $\bar{w}(k(i)) = \bar{w}(k(i)) + w(i)$
+1. Return $\bar{w}$
+
+
+- Explain Algorithm 3 and the small adaption to directly compute $D^T$ instead of $D$ to save the transposing.
+- Also think about sparse matrices, accessing columns is much more efficient than accessing rows (maybe use this).
 - Also show how to compute $X^Ty$ in this system
 - Small showcase in R
 
