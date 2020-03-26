@@ -13,7 +13,7 @@ test_that("Demmler-Reinsch-Orthogonalization can be computed", {
   X_full = X[k,]
 
   xtx_full = t(X_full) %*% X_full
-  xtx = binnedMatMult(X = X, k = k-1, w = w)
+  xtx = binnedMatMult(X = X, k = k-1, w = 1)
 
   expect_true(all.equal(xtx_full, xtx, check.attributes = FALSE))
 
@@ -35,7 +35,4 @@ test_that("Demmler-Reinsch-Orthogonalization can be computed", {
   out_full = t(X_full * w) %*% y
 
   expect_true(all.equal(out, out_full, check.attributes = FALSE))
-
-
-
 })
