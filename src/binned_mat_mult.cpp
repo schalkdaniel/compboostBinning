@@ -3,6 +3,7 @@
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
+#include <iostream>
 
 //' Calculating binned matrix product
 //'
@@ -26,13 +27,51 @@
 arma::mat binnedMatMult (const arma::mat& X, const arma::uvec& k, const arma::vec& w)
 {
   unsigned int n = k.size();
-  arma::mat L(X.n_cols, n, arma::fill::zeros);
+  unsigned int ind;
+  arma::mat L(X.n_cols, X.n_rows, arma::fill::zeros);
 
-  for (unsigned int i = 0; i < n; i++) {
-    unsigned int ind = k(i);
-    L(,ind += w(ind * X(ind,);
+  // IMPROVE arma::trans(X.row(ind)): selecting X by rows is not the preferred way since
+  // Armadillo uses column major layout. Maybe improve:
+
+  if ( (w.size() == 1) && (w(0) == 1) ) {
+    // std::cout << "Weight of size 1:" << std::endl;
+    for (unsigned int i = 0; i < n; i++) {
+       ind = k(i);
+       L.col(ind) += arma::trans(X.row(ind));
+    }
+  } else {
+    for (unsigned int i = 0; i < n; i++) {
+      ind = k(i);
+      L.col(ind) += arma::trans(X.row(ind)) * w(i);
+    }
   }
   return L * X;
+}
+
+
+// [[Rcpp::export]]
+arma::mat binnedMatMultResponse (const arma::mat& X, const arma::vec& y,  const arma::uvec& k, const arma::vec& w)
+{
+  unsigned int n = k.size();
+  unsigned int ind;
+  arma::rowvec out(X.n_cols, arma::fill::zeros);
+
+  // IMPROVE arma::trans(X.row(ind)): selecting X by rows is not the preferred way since
+  // Armadillo uses column major layout. Maybe improve:
+
+  if ( (w.size() == 1) && (w(0) == 1) ) {
+    // std::cout << "Weight of size 1:" << std::endl;
+    for (unsigned int i = 0; i < n; i++) {
+       ind = k(i);
+       out += y(i) * X.row(ind);
+    }
+  } else {
+    for (unsigned int i = 0; i < n; i++) {
+      ind = k(i);
+      out += w(i) * y(i) * X.row(ind);
+    }
+  }
+  return out;
 }
 
 #endif // BINNED_MAT_MULT_

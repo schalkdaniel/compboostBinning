@@ -23,3 +23,7 @@ binnedMatMult <- function(X, k, w) {
     .Call(`_compboostBinning_binnedMatMult`, X, k, w)
 }
 
+binnedMatMultResponse <- function(X, y, k, w) {
+    .Call(`_compboostBinning_binnedMatMultResponse`, X, y, k, w)
+}
+

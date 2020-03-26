@@ -11,6 +11,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+
+devtools::load_all()
 ```
 
 
@@ -52,19 +54,124 @@ X = \left(\begin{array}{c}
 \end{array}\right)
 $$
 
-### Algorithm to create weight matrix
+### Algorithm to compute crossproduct
 
-Again, we assume that $W$ has diagonal form $W = \text{diag}(w)$. The following algorithm explains how to get from $w$ to $\bar{w}$ where $\bar{W} = \text{diag}(\bar{w})$ (see Zheyuan Li, Simon N. Wood):
+Again, we assume that $W$ has diagonal form $W = \text{diag}(w)$. The following algorithm explains how to get from $w$ to $\bar{w}$ where $\bar{W} = \text{diag}(\bar{w})$. The algorithm is an adaption of Algorithm 3 from "Zheyuan Li, Simon N. Wood" by using $\bar{A} = \bar{B} = \bar{X}$. The idea is to first calculate $D = \bar{X}^T\bar{W}$ and then $D^T\bar{X}$:
 
-1. Set $\bar{w} = \vec{0}$
-1. For $i = 1, \dots, n$ do $\bar{w}(k(i)) = \bar{w}(k(i)) + w(i)$
-1. Return $\bar{w}$
+1. Set $D^T = O_{p\times \bar{n}}$
+1. For $i = 1, \dots, n$ do $D(,i) \mathrel{{+}{=}} w(i)\bar{X}(i,)$
+1. Return $D^T\bar{X}$
 
+Instead of calculating $D$ we calculate directly $D^T$ to not do another transposing step.
 
-- Explain Algorithm 3 and the small adaption to directly compute $D^T$ instead of $D$ to save the transposing.
 - Also think about sparse matrices, accessing columns is much more efficient than accessing rows (maybe use this).
 - Also show how to compute $X^Ty$ in this system
-- Small showcase in R
+
+#### Microbenchmark
+
+For small runtime comparison we simulate $n = 10^6$ x values that are used for polynomial regression of degree 20. The number of unique values are $\sqrt{n}$:
+
+```{r}
+nsim = 1e6L
+nunique = trunc(sqrt(nsim))
+
+xunique = runif(n = nunique, min = 0, max = 10)
+k = sample(x = seq_len(nunique), size = nsim, replace = TRUE)
+
+X = poly(x = xunique, degree = 20L)
+X_full = X[k,]
+```
+
+First we look at the case without weights. Here, the weights are initialized as 1:
+```{r}
+# We have equal weights in this case:
+w = 1
+
+xtx_full = t(X_full) %*% X_full
+xtx = binnedMatMult(X = X, k = k-1, w = w)
+
+all.equal(xtx_full, xtx, check.attributes = FALSE)
+
+microbenchmark::microbenchmark(
+  "R mat mult" = { t(X_full) %*% X_full },
+  "C++ binned mat mult" = { binnedMatMult(X = X, k = k-1, w = w) },
+  times = 10L
+)
+```
+
+The next case is the case with weights:
+```{r}
+# With weights:
+w = sample(x = seq_len(20L), size = nsim, replace = TRUE)
+
+xtwx_full = t(X_full * w)  %*% X_full
+xtwx = binnedMatMult(X = X, k = k-1, w = w)
+
+all.equal(xtwx_full, xtwx, check.attributes = FALSE)
+
+microbenchmark::microbenchmark(
+  "R mat mult" = { t(X_full * w) %*% X_full },
+  "C++ binned mat mult" = { binnedMatMult(X = X, k = k-1, w = w) },
+  times = 10L
+)
+```
+
+
+### Compute matrix product w.r.t. response
+
+The aim is to use binning for component-wise boosting. The problem here is, that the matrix $X^TX$ is computet once and then reused over and over again. But the part $X^Ty$ has to be calculated in every iteration over and over again. Therefore, we are more interested in computing $u = X^TWy$ more efficient. The adaption to the upper algorithm is very easy:
+
+1. Set $u = \vec{0}$
+1. For $i = 1, \dots, n$ do $u \mathrel{{+}{=}} w(i)y(i)\bar{X}(i,)$
+1. Return $u$
+
+#### Microbenchmark
+
+```{r}
+y = runif(nsim)
+
+out = binnedMatMultResponse(X = X, y = y, k = k-1, w = 1)
+out_full = t(X_full) %*% y
+
+all.equal(out, out_full, check.attributes = FALSE)
+
+microbenchmark::microbenchmark(
+  "R mat mult" = { t(X_full) %*% y },
+  "C++ binned mat mult" = { binnedMatMultResponse(X = X, y = y, k = k-1, w = 1) },
+  times = 10L
+)
+
+
+
+out = binnedMatMultResponse(X = X, y = y, k = k-1, w = w)
+out_full = t(X_full * w) %*% y
+
+all.equal(out, out_full, check.attributes = FALSE)
+
+microbenchmark::microbenchmark(
+  "R mat mult" = { t(X_full * w) %*% y },
+  "C++ binned mat mult" = { binnedMatMultResponse(X = X, y = y, k = k-1, w = w) },
+  times = 10L
+)
+```
+
+
+### Weighted least squares microbenchmark
+
+
+```{r}
+# Fit weighted least squares:
+beta = binnedMatMultResponse(X = X, y = y, k = k-1, w = w) %*% solve(binnedMatMult(X = X, k = k-1, w = w))
+beta_full = solve(t(X_full * w) %*% X_full) %*% t(X_full * w) %*% y
+
+all.equal(t(beta), beta_full, check.attributes = FALSE)
+
+microbenchmark::microbenchmark(
+  "Weighted OLS R" = { solve(t(X_full * w) %*% X_full) %*% t(X_full * w) %*% y },
+  "Weighted OLS binned" = { binnedMatMultResponse(X = X, y = y, k = k-1, w = w) %*% solve(binnedMatMult(X = X, k = k-1, w = w)) },
+  times = 5L
+)
+```
 
 ## Binning numerical features
 
@@ -73,7 +180,7 @@ The idea here is to discretize the vector $x\in\mathbb{R}^n$ to a vector $\bar{x
 - How to best discretize?
 - Small showcase in R
 
-# Microbenchmark
+### Microbenchmark
 
 ```{r}
 head(iris)
