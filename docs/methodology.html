@@ -215,9 +215,9 @@ X = \left(\begin{array}{c}
 <span id="cb2-13"><a href="#cb2-13"></a>  <span class="dt">times =</span> 10L</span>
 <span id="cb2-14"><a href="#cb2-14"></a>)</span>
 <span id="cb2-15"><a href="#cb2-15"></a><span class="co">#&gt; Unit: milliseconds</span></span>
-<span id="cb2-16"><a href="#cb2-16"></a><span class="co">#&gt;                 expr    min     lq   mean median     uq    max neval cld</span></span>
-<span id="cb2-17"><a href="#cb2-17"></a><span class="co">#&gt;           R mat mult 298.21 299.06 303.71 299.79 302.45 337.57    10   b</span></span>
-<span id="cb2-18"><a href="#cb2-18"></a><span class="co">#&gt;  C++ binned mat mult  21.46  22.19  22.66  22.25  22.37  26.96    10  a</span></span></code></pre></div>
+<span id="cb2-16"><a href="#cb2-16"></a><span class="co">#&gt;                 expr    min     lq   mean median     uq   max neval cld</span></span>
+<span id="cb2-17"><a href="#cb2-17"></a><span class="co">#&gt;           R mat mult 295.76 298.72 303.50 299.51 302.89 337.1    10   b</span></span>
+<span id="cb2-18"><a href="#cb2-18"></a><span class="co">#&gt;  C++ binned mat mult  21.17  21.19  21.88  21.25  21.43  27.4    10  a</span></span></code></pre></div>
 <p>The next case is the case with weights:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="co"># With weights:</span></span>
 <span id="cb3-2"><a href="#cb3-2"></a>w =<span class="st"> </span><span class="kw">sample</span>(<span class="dt">x =</span> <span class="kw">seq_len</span>(20L), <span class="dt">size =</span> nsim, <span class="dt">replace =</span> <span class="ot">TRUE</span>)</span>
@@ -234,9 +234,9 @@ X = \left(\begin{array}{c}
 <span id="cb3-13"><a href="#cb3-13"></a>  <span class="dt">times =</span> 10L</span>
 <span id="cb3-14"><a href="#cb3-14"></a>)</span>
 <span id="cb3-15"><a href="#cb3-15"></a><span class="co">#&gt; Unit: milliseconds</span></span>
-<span id="cb3-16"><a href="#cb3-16"></a><span class="co">#&gt;                 expr    min     lq   mean median    uq    max neval cld</span></span>
-<span id="cb3-17"><a href="#cb3-17"></a><span class="co">#&gt;           R mat mult 354.51 354.56 362.08 356.14 358.3 392.55    10   b</span></span>
-<span id="cb3-18"><a href="#cb3-18"></a><span class="co">#&gt;  C++ binned mat mult  24.84  25.04  25.75  25.13  26.6  28.82    10  a</span></span></code></pre></div>
+<span id="cb3-16"><a href="#cb3-16"></a><span class="co">#&gt;                 expr    min     lq  mean median     uq    max neval cld</span></span>
+<span id="cb3-17"><a href="#cb3-17"></a><span class="co">#&gt;           R mat mult 349.83 350.83 358.5 352.05 355.90 386.50    10   b</span></span>
+<span id="cb3-18"><a href="#cb3-18"></a><span class="co">#&gt;  C++ binned mat mult  24.28  24.48  25.0  24.62  25.65  26.88    10  a</span></span></code></pre></div>
 </div>
 </div>
 <div id="compute-matrix-product-w.r.t.-response" class="section level3">
@@ -263,27 +263,26 @@ X = \left(\begin{array}{c}
 <span id="cb4-12"><a href="#cb4-12"></a>  <span class="dt">times =</span> 10L</span>
 <span id="cb4-13"><a href="#cb4-13"></a>)</span>
 <span id="cb4-14"><a href="#cb4-14"></a><span class="co">#&gt; Unit: milliseconds</span></span>
-<span id="cb4-15"><a href="#cb4-15"></a><span class="co">#&gt;                 expr   min    lq  mean median    uq   max neval cld</span></span>
-<span id="cb4-16"><a href="#cb4-16"></a><span class="co">#&gt;           R mat mult 74.68 75.28 80.36  75.61 76.97 118.3    10   b</span></span>
-<span id="cb4-17"><a href="#cb4-17"></a><span class="co">#&gt;  C++ binned mat mult 18.61 18.86 19.04  18.97 19.16  19.6    10  a</span></span>
+<span id="cb4-15"><a href="#cb4-15"></a><span class="co">#&gt;                 expr   min    lq  mean median    uq    max neval cld</span></span>
+<span id="cb4-16"><a href="#cb4-16"></a><span class="co">#&gt;           R mat mult 74.33 74.44 79.99  76.46 76.58 113.91    10   b</span></span>
+<span id="cb4-17"><a href="#cb4-17"></a><span class="co">#&gt;  C++ binned mat mult 18.19 18.27 18.39  18.40 18.49  18.59    10  a</span></span>
 <span id="cb4-18"><a href="#cb4-18"></a></span>
 <span id="cb4-19"><a href="#cb4-19"></a></span>
-<span id="cb4-20"><a href="#cb4-20"></a></span>
-<span id="cb4-21"><a href="#cb4-21"></a>out =<span class="st"> </span><span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)</span>
-<span id="cb4-22"><a href="#cb4-22"></a>out_full =<span class="st"> </span><span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y</span>
-<span id="cb4-23"><a href="#cb4-23"></a></span>
-<span id="cb4-24"><a href="#cb4-24"></a><span class="kw">all.equal</span>(out, out_full, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
-<span id="cb4-25"><a href="#cb4-25"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb4-26"><a href="#cb4-26"></a></span>
-<span id="cb4-27"><a href="#cb4-27"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
-<span id="cb4-28"><a href="#cb4-28"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y },</span>
-<span id="cb4-29"><a href="#cb4-29"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
-<span id="cb4-30"><a href="#cb4-30"></a>  <span class="dt">times =</span> 10L</span>
-<span id="cb4-31"><a href="#cb4-31"></a>)</span>
-<span id="cb4-32"><a href="#cb4-32"></a><span class="co">#&gt; Unit: milliseconds</span></span>
-<span id="cb4-33"><a href="#cb4-33"></a><span class="co">#&gt;                 expr    min     lq   mean median     uq    max neval cld</span></span>
-<span id="cb4-34"><a href="#cb4-34"></a><span class="co">#&gt;           R mat mult 128.15 128.67 135.12 128.82 133.17 166.30    10   b</span></span>
-<span id="cb4-35"><a href="#cb4-35"></a><span class="co">#&gt;  C++ binned mat mult  19.84  20.01  20.44  20.37  20.58  21.98    10  a</span></span></code></pre></div>
+<span id="cb4-20"><a href="#cb4-20"></a>out =<span class="st"> </span><span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)</span>
+<span id="cb4-21"><a href="#cb4-21"></a>out_full =<span class="st"> </span><span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y</span>
+<span id="cb4-22"><a href="#cb4-22"></a></span>
+<span id="cb4-23"><a href="#cb4-23"></a><span class="kw">all.equal</span>(out, out_full, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb4-24"><a href="#cb4-24"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb4-25"><a href="#cb4-25"></a></span>
+<span id="cb4-26"><a href="#cb4-26"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
+<span id="cb4-27"><a href="#cb4-27"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y },</span>
+<span id="cb4-28"><a href="#cb4-28"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
+<span id="cb4-29"><a href="#cb4-29"></a>  <span class="dt">times =</span> 10L</span>
+<span id="cb4-30"><a href="#cb4-30"></a>)</span>
+<span id="cb4-31"><a href="#cb4-31"></a><span class="co">#&gt; Unit: milliseconds</span></span>
+<span id="cb4-32"><a href="#cb4-32"></a><span class="co">#&gt;                 expr    min    lq   mean median     uq   max neval cld</span></span>
+<span id="cb4-33"><a href="#cb4-33"></a><span class="co">#&gt;           R mat mult 127.16 127.3 135.68 128.20 135.66 168.6    10   b</span></span>
+<span id="cb4-34"><a href="#cb4-34"></a><span class="co">#&gt;  C++ binned mat mult  18.98  19.1  19.36  19.21  19.31  20.9    10  a</span></span></code></pre></div>
 </div>
 </div>
 <div id="weighted-least-squares-microbenchmark" class="section level3">
@@ -301,9 +300,9 @@ X = \left(\begin{array}{c}
 <span id="cb5-11"><a href="#cb5-11"></a>  <span class="dt">times =</span> 5L</span>
 <span id="cb5-12"><a href="#cb5-12"></a>)</span>
 <span id="cb5-13"><a href="#cb5-13"></a><span class="co">#&gt; Unit: milliseconds</span></span>
-<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt;                 expr   min     lq   mean median     uq    max neval cld</span></span>
-<span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt;       Weighted OLS R 756.4 761.95 775.12  775.4 790.46 791.37     5   b</span></span>
-<span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt;  Weighted OLS binned  46.2  46.94  51.47   47.1  47.23  69.87     5  a</span></span></code></pre></div>
+<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt;                 expr    min     lq   mean median     uq    max neval cld</span></span>
+<span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt;       Weighted OLS R 731.00 733.16 768.56 753.96 791.89 832.79     5   b</span></span>
+<span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt;  Weighted OLS binned  43.67  44.12  49.21  44.13  44.22  69.93     5  a</span></span></code></pre></div>
 </div>
 </div>
 <div id="binning-numerical-features" class="section level2">
