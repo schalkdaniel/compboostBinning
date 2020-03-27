@@ -72,7 +72,7 @@ Instead of calculating $D$ we calculate directly $D^T$ to not do another transpo
 For small runtime comparison we simulate $n = 10^6$ x values that are used for polynomial regression of degree 20. The number of unique values are $\sqrt{n}$:
 
 ```{r}
-nsim = 1e6L
+nsim = 1e4L
 nunique = trunc(sqrt(nsim))
 
 xunique = runif(n = nunique, min = 0, max = 10)
