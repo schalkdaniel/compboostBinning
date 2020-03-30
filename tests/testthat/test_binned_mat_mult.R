@@ -1,6 +1,6 @@
-context("Demmler-Reinsch-Orthogonalization works")
+context("Matrix multiplication on binned matrices works")
 
-test_that("Demmler-Reinsch-Orthogonalization can be computed", {
+test_that("same as above", {
 
   # Simulate Data:
   nsim = 1e6L

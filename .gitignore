@@ -1,1 +1,3 @@
 README.html
+src/*.o
+src/*.so
