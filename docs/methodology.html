@@ -146,6 +146,10 @@ a.sourceLine {
 <ul>
 <li>First formulation of <em>binning</em> (page 8, 3.3. remark 2)</li>
 </ul></li>
+<li><a href="https://amstat.tandfonline.com/doi/full/10.1080/01621459.2016.1195744#.XoHEQClfiWg">Simon N. Wood, Zheyuan Li, Gavin Shaddick, and Nicole H. Augustin: “Generalized Additive Models for Gigadata: Modeling the U.K. Black Smoke Network Daily Data”</a>
+<ul>
+<li>Argumentation that <span class="math inline">\(\sqrt{n}\)</span> unique points are sufficient.</li>
+</ul></li>
 </ul>
 </div>
 <div id="goal" class="section level1">
@@ -184,59 +188,136 @@ X = \left(\begin{array}{c}
 <li>Return <span class="math inline">\(D^T\bar{X}\)</span></li>
 </ol>
 <p>Instead of calculating <span class="math inline">\(D\)</span> we calculate directly <span class="math inline">\(D^T\)</span> to not do another transposing step.</p>
-<ul>
-<li>Also think about sparse matrices, accessing columns is much more efficient than accessing rows (maybe use this).</li>
-<li>Also show how to compute <span class="math inline">\(X^Ty\)</span> in this system</li>
-</ul>
+<p>Another adaption to reduce the number of vector additions (for diagonal <span class="math inline">\(W\)</span>) is to accumulate the weights and do one matrix multiplication in the end:</p>
+<ol style="list-style-type: decimal">
+<li>Set <span class="math inline">\(w_c = \vec{0} \in \mathbb{R}^{\bar{n}}\)</span></li>
+<li>For <span class="math inline">\(i = 1, \dots, n\)</span> do <span class="math inline">\(w_c \mathrel{{+}{=}} w(i)\)</span></li>
+<li>Return <span class="math inline">\((X \otimes w_c)^T X\)</span></li>
+</ol>
 <div id="microbenchmark" class="section level4">
 <h4>Microbenchmark</h4>
-<p>For small runtime comparison we simulate <span class="math inline">\(n = 10^6\)</span> x values that are used for polynomial regression of degree 20. The number of unique values are <span class="math inline">\(\sqrt{n}\)</span>:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a>nsim =<span class="st"> </span><span class="fl">1e4</span>L</span>
+<p>For small runtime comparison we simulate <span class="math inline">\(n = 10^6\)</span> x values that are used for cubic spline regression of degree 16 (20 parameter). The number of unique values are <span class="math inline">\(\sqrt{n}\)</span>: M</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a>nsim =<span class="st"> </span><span class="fl">1e6</span>L</span>
 <span id="cb1-2"><a href="#cb1-2"></a>nunique =<span class="st"> </span><span class="kw">trunc</span>(<span class="kw">sqrt</span>(nsim))</span>
 <span id="cb1-3"><a href="#cb1-3"></a></span>
-<span id="cb1-4"><a href="#cb1-4"></a>xunique =<span class="st"> </span><span class="kw">runif</span>(<span class="dt">n =</span> nunique, <span class="dt">min =</span> <span class="dv">0</span>, <span class="dt">max =</span> <span class="dv">10</span>)</span>
-<span id="cb1-5"><a href="#cb1-5"></a>k =<span class="st"> </span><span class="kw">sample</span>(<span class="dt">x =</span> <span class="kw">seq_len</span>(nunique), <span class="dt">size =</span> nsim, <span class="dt">replace =</span> <span class="ot">TRUE</span>)</span>
-<span id="cb1-6"><a href="#cb1-6"></a></span>
-<span id="cb1-7"><a href="#cb1-7"></a>X =<span class="st"> </span><span class="kw">poly</span>(<span class="dt">x =</span> xunique, <span class="dt">degree =</span> 20L)</span>
-<span id="cb1-8"><a href="#cb1-8"></a>X_full =<span class="st"> </span>X[k,]</span></code></pre></div>
-<p>First we look at the case without weights. Here, the weights are initialized as 1:</p>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="co"># Sample data:</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a>xunique =<span class="st"> </span><span class="kw">runif</span>(<span class="dt">n =</span> nunique, <span class="dt">min =</span> <span class="dv">0</span>, <span class="dt">max =</span> <span class="dv">10</span>)</span>
+<span id="cb1-6"><a href="#cb1-6"></a>k =<span class="st"> </span><span class="kw">sample</span>(<span class="dt">x =</span> <span class="kw">seq_len</span>(nunique), <span class="dt">size =</span> nsim, <span class="dt">replace =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb1-7"><a href="#cb1-7"></a></span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="co"># Calculate knots of given x values:</span></span>
+<span id="cb1-9"><a href="#cb1-9"></a>knots =<span class="st"> </span>compboostSplines<span class="op">::</span><span class="kw">createKnots</span>(<span class="dt">values =</span> xunique, <span class="dt">n_knots =</span> <span class="dv">16</span>, <span class="dt">degree =</span> <span class="dv">3</span>)</span>
+<span id="cb1-10"><a href="#cb1-10"></a></span>
+<span id="cb1-11"><a href="#cb1-11"></a><span class="co"># Create basis using that knots:</span></span>
+<span id="cb1-12"><a href="#cb1-12"></a>X =<span class="st"> </span>compboostSplines<span class="op">::</span><span class="kw">createSplineBasis</span>(<span class="dt">values =</span> xunique, <span class="dt">degree =</span> <span class="dv">3</span>, <span class="dt">knots =</span> knots)</span>
+<span id="cb1-13"><a href="#cb1-13"></a><span class="co"># We assume matrix to be stored transposed (this is the case in compboost):</span></span>
+<span id="cb1-14"><a href="#cb1-14"></a>X_sparse =<span class="st"> </span>Matrix<span class="op">::</span><span class="kw">t</span>(compboostSplines<span class="op">::</span><span class="kw">createSparseSplineBasis</span>(<span class="dt">values =</span> xunique, <span class="dt">degree =</span> <span class="dv">3</span>, <span class="dt">knots =</span> knots))</span>
+<span id="cb1-15"><a href="#cb1-15"></a>X_full =<span class="st"> </span>X[k,]</span>
+<span id="cb1-16"><a href="#cb1-16"></a></span>
+<span id="cb1-17"><a href="#cb1-17"></a></span>
+<span id="cb1-18"><a href="#cb1-18"></a><span class="co"># Define C++ matrix multiplication for comparison:</span></span>
+<span id="cb1-19"><a href="#cb1-19"></a>code_mat_mult =<span class="st"> &quot;</span></span>
+<span id="cb1-20"><a href="#cb1-20"></a><span class="st">arma::mat cppMatMult (const arma::mat&amp; X) {</span></span>
+<span id="cb1-21"><a href="#cb1-21"></a><span class="st">  return arma::trans(X) * X;</span></span>
+<span id="cb1-22"><a href="#cb1-22"></a><span class="st">}</span></span>
+<span id="cb1-23"><a href="#cb1-23"></a><span class="st">&quot;</span></span>
+<span id="cb1-24"><a href="#cb1-24"></a>code_mat_mult_weight =<span class="st"> &quot;</span></span>
+<span id="cb1-25"><a href="#cb1-25"></a><span class="st">arma::mat cppMatMultWeight (const arma::mat&amp; X, const arma::vec&amp; w) {</span></span>
+<span id="cb1-26"><a href="#cb1-26"></a><span class="st">  return arma::trans(X.each_col() % w) * X;</span></span>
+<span id="cb1-27"><a href="#cb1-27"></a><span class="st">}</span></span>
+<span id="cb1-28"><a href="#cb1-28"></a><span class="st">&quot;</span></span>
+<span id="cb1-29"><a href="#cb1-29"></a></span>
+<span id="cb1-30"><a href="#cb1-30"></a>Rcpp<span class="op">::</span><span class="kw">cppFunction</span>(<span class="dt">code =</span> code_mat_mult, <span class="dt">depends =</span> <span class="st">&quot;RcppArmadillo&quot;</span>)</span>
+<span id="cb1-31"><a href="#cb1-31"></a>Rcpp<span class="op">::</span><span class="kw">cppFunction</span>(<span class="dt">code =</span> code_mat_mult_weight, <span class="dt">depends =</span> <span class="st">&quot;RcppArmadillo&quot;</span>)</span></code></pre></div>
+<p>First we look at the case without weights. Here, the weights are initialized as 1. <strong>Note</strong> The cpp matrix multiplication is not very fair since the conversion of the R matrix to C++ is also not for free:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="co"># We have equal weights in this case:</span></span>
 <span id="cb2-2"><a href="#cb2-2"></a>w =<span class="st"> </span><span class="dv">1</span></span>
 <span id="cb2-3"><a href="#cb2-3"></a></span>
 <span id="cb2-4"><a href="#cb2-4"></a>xtx_full =<span class="st"> </span><span class="kw">t</span>(X_full) <span class="op">%*%</span><span class="st"> </span>X_full</span>
-<span id="cb2-5"><a href="#cb2-5"></a>xtx =<span class="st"> </span><span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)</span>
-<span id="cb2-6"><a href="#cb2-6"></a></span>
+<span id="cb2-5"><a href="#cb2-5"></a></span>
+<span id="cb2-6"><a href="#cb2-6"></a>xtx =<span class="st"> </span><span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w, <span class="ot">FALSE</span>)</span>
 <span id="cb2-7"><a href="#cb2-7"></a><span class="kw">all.equal</span>(xtx_full, xtx, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
 <span id="cb2-8"><a href="#cb2-8"></a><span class="co">#&gt; [1] TRUE</span></span>
 <span id="cb2-9"><a href="#cb2-9"></a></span>
-<span id="cb2-10"><a href="#cb2-10"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
-<span id="cb2-11"><a href="#cb2-11"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full) <span class="op">%*%</span><span class="st"> </span>X_full },</span>
-<span id="cb2-12"><a href="#cb2-12"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
-<span id="cb2-13"><a href="#cb2-13"></a>  <span class="dt">times =</span> 10L</span>
-<span id="cb2-14"><a href="#cb2-14"></a>)</span>
-<span id="cb2-15"><a href="#cb2-15"></a><span class="co">#&gt; Unit: microseconds</span></span>
-<span id="cb2-16"><a href="#cb2-16"></a><span class="co">#&gt;                 expr    min     lq   mean median     uq    max neval cld</span></span>
-<span id="cb2-17"><a href="#cb2-17"></a><span class="co">#&gt;           R mat mult 2600.2 2619.8 3010.1 2967.8 3291.4 3581.3    10   b</span></span>
-<span id="cb2-18"><a href="#cb2-18"></a><span class="co">#&gt;  C++ binned mat mult  185.6  197.2  225.7  225.4  250.2  288.9    10  a</span></span></code></pre></div>
+<span id="cb2-10"><a href="#cb2-10"></a>xtx =<span class="st"> </span><span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w, <span class="ot">TRUE</span>)</span>
+<span id="cb2-11"><a href="#cb2-11"></a><span class="kw">all.equal</span>(xtx_full, xtx, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb2-12"><a href="#cb2-12"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb2-13"><a href="#cb2-13"></a></span>
+<span id="cb2-14"><a href="#cb2-14"></a>xtx_sp =<span class="st"> </span><span class="kw">binnedSparseMatMult</span>(<span class="dt">X =</span> X_sparse, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)</span>
+<span id="cb2-15"><a href="#cb2-15"></a>xtx_sp[<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>, <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>]</span>
+<span id="cb2-16"><a href="#cb2-16"></a><span class="co">#&gt;          [,1]     [,2]     [,3]     [,4]     [,5]      [,6]     [,7]     [,8]      [,9]    [,10]</span></span>
+<span id="cb2-17"><a href="#cb2-17"></a><span class="co">#&gt;  [1,]  180.66  1176.93   580.41    12.55     0.00     0.000     0.00     0.00     0.000     0.00</span></span>
+<span id="cb2-18"><a href="#cb2-18"></a><span class="co">#&gt;  [2,] 1176.93 12427.65 12035.88  1344.77    12.16     0.000     0.00     0.00     0.000     0.00</span></span>
+<span id="cb2-19"><a href="#cb2-19"></a><span class="co">#&gt;  [3,]  580.41 12035.88 27077.53 13881.53  1534.89    12.990     0.00     0.00     0.000     0.00</span></span>
+<span id="cb2-20"><a href="#cb2-20"></a><span class="co">#&gt;  [4,]   12.55  1344.77 13881.53 30339.24 14823.68  1412.188    13.55     0.00     0.000     0.00</span></span>
+<span id="cb2-21"><a href="#cb2-21"></a><span class="co">#&gt;  [5,]    0.00    12.16  1534.89 14823.68 29199.56 15486.987  1639.60    10.17     0.000     0.00</span></span>
+<span id="cb2-22"><a href="#cb2-22"></a><span class="co">#&gt;  [6,]    0.00     0.00    12.99  1412.19 15486.99 32210.582 14623.76  1402.28     8.426     0.00</span></span>
+<span id="cb2-23"><a href="#cb2-23"></a><span class="co">#&gt;  [7,]    0.00     0.00     0.00    13.55  1639.60 14623.762 27515.12 11595.05  1029.085    10.16</span></span>
+<span id="cb2-24"><a href="#cb2-24"></a><span class="co">#&gt;  [8,]    0.00     0.00     0.00     0.00    10.17  1402.283 11595.05 21906.53 12806.895  1574.30</span></span>
+<span id="cb2-25"><a href="#cb2-25"></a><span class="co">#&gt;  [9,]    0.00     0.00     0.00     0.00     0.00     8.426  1029.09 12806.89 30154.418 14018.14</span></span>
+<span id="cb2-26"><a href="#cb2-26"></a><span class="co">#&gt; [10,]    0.00     0.00     0.00     0.00     0.00     0.000    10.16  1574.30 14018.136 27179.01</span></span>
+<span id="cb2-27"><a href="#cb2-27"></a>xtx_full[<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>, <span class="dv">1</span><span class="op">:</span><span class="dv">10</span>]</span>
+<span id="cb2-28"><a href="#cb2-28"></a><span class="co">#&gt;          [,1]     [,2]     [,3]     [,4]     [,5]      [,6]     [,7]     [,8]      [,9]    [,10]</span></span>
+<span id="cb2-29"><a href="#cb2-29"></a><span class="co">#&gt;  [1,]  180.66  1176.93   580.41    12.55     0.00     0.000     0.00     0.00     0.000     0.00</span></span>
+<span id="cb2-30"><a href="#cb2-30"></a><span class="co">#&gt;  [2,] 1176.93 12427.65 12035.88  1344.77    12.16     0.000     0.00     0.00     0.000     0.00</span></span>
+<span id="cb2-31"><a href="#cb2-31"></a><span class="co">#&gt;  [3,]  580.41 12035.88 27077.53 13881.53  1534.89    12.990     0.00     0.00     0.000     0.00</span></span>
+<span id="cb2-32"><a href="#cb2-32"></a><span class="co">#&gt;  [4,]   12.55  1344.77 13881.53 30339.24 14823.68  1412.188    13.55     0.00     0.000     0.00</span></span>
+<span id="cb2-33"><a href="#cb2-33"></a><span class="co">#&gt;  [5,]    0.00    12.16  1534.89 14823.68 29199.56 15486.987  1639.60    10.17     0.000     0.00</span></span>
+<span id="cb2-34"><a href="#cb2-34"></a><span class="co">#&gt;  [6,]    0.00     0.00    12.99  1412.19 15486.99 32210.582 14623.76  1402.28     8.426     0.00</span></span>
+<span id="cb2-35"><a href="#cb2-35"></a><span class="co">#&gt;  [7,]    0.00     0.00     0.00    13.55  1639.60 14623.762 27515.12 11595.05  1029.085    10.16</span></span>
+<span id="cb2-36"><a href="#cb2-36"></a><span class="co">#&gt;  [8,]    0.00     0.00     0.00     0.00    10.17  1402.283 11595.05 21906.53 12806.895  1574.30</span></span>
+<span id="cb2-37"><a href="#cb2-37"></a><span class="co">#&gt;  [9,]    0.00     0.00     0.00     0.00     0.00     8.426  1029.09 12806.89 30154.418 14018.14</span></span>
+<span id="cb2-38"><a href="#cb2-38"></a><span class="co">#&gt; [10,]    0.00     0.00     0.00     0.00     0.00     0.000    10.16  1574.30 14018.136 27179.01</span></span>
+<span id="cb2-39"><a href="#cb2-39"></a></span>
+<span id="cb2-40"><a href="#cb2-40"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
+<span id="cb2-41"><a href="#cb2-41"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full) <span class="op">%*%</span><span class="st"> </span>X_full },</span>
+<span id="cb2-42"><a href="#cb2-42"></a>  <span class="st">&quot;C++ mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">cppMatMult</span>(X_full) },</span>
+<span id="cb2-43"><a href="#cb2-43"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w, <span class="ot">FALSE</span>) },</span>
+<span id="cb2-44"><a href="#cb2-44"></a>  <span class="st">&quot;C++ binned mat mult fast&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w, <span class="ot">TRUE</span>) },</span>
+<span id="cb2-45"><a href="#cb2-45"></a>  <span class="st">&quot;C++ binned mat mult fast sparse&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedSparseMatMult</span>(<span class="dt">X =</span> X_sparse, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
+<span id="cb2-46"><a href="#cb2-46"></a>  <span class="dt">times =</span> 10L</span>
+<span id="cb2-47"><a href="#cb2-47"></a>)</span>
+<span id="cb2-48"><a href="#cb2-48"></a><span class="co">#&gt; Unit: milliseconds</span></span>
+<span id="cb2-49"><a href="#cb2-49"></a><span class="co">#&gt;                             expr     min      lq    mean  median      uq     max neval  cld</span></span>
+<span id="cb2-50"><a href="#cb2-50"></a><span class="co">#&gt;                       R mat mult 305.228 308.705 317.741 316.809 326.995 330.020    10    d</span></span>
+<span id="cb2-51"><a href="#cb2-51"></a><span class="co">#&gt;                     C++ mat mult 211.738 214.138 214.860 214.523 216.283 218.042    10   c </span></span>
+<span id="cb2-52"><a href="#cb2-52"></a><span class="co">#&gt;              C++ binned mat mult  20.702  22.557  23.046  22.655  22.798  26.312    10  b  </span></span>
+<span id="cb2-53"><a href="#cb2-53"></a><span class="co">#&gt;         C++ binned mat mult fast   3.062   3.152   3.975   3.943   4.820   4.866    10 a   </span></span>
+<span id="cb2-54"><a href="#cb2-54"></a><span class="co">#&gt;  C++ binned mat mult fast sparse   2.832   4.356   4.249   4.466   4.749   4.902    10 a</span></span></code></pre></div>
 <p>The next case is the case with weights:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="co"># With weights:</span></span>
 <span id="cb3-2"><a href="#cb3-2"></a>w =<span class="st"> </span><span class="kw">sample</span>(<span class="dt">x =</span> <span class="kw">seq_len</span>(20L), <span class="dt">size =</span> nsim, <span class="dt">replace =</span> <span class="ot">TRUE</span>)</span>
 <span id="cb3-3"><a href="#cb3-3"></a></span>
 <span id="cb3-4"><a href="#cb3-4"></a>xtwx_full =<span class="st"> </span><span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w)  <span class="op">%*%</span><span class="st"> </span>X_full</span>
-<span id="cb3-5"><a href="#cb3-5"></a>xtwx =<span class="st"> </span><span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)</span>
-<span id="cb3-6"><a href="#cb3-6"></a></span>
+<span id="cb3-5"><a href="#cb3-5"></a></span>
+<span id="cb3-6"><a href="#cb3-6"></a>xtwx =<span class="st"> </span><span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w, <span class="ot">FALSE</span>)</span>
 <span id="cb3-7"><a href="#cb3-7"></a><span class="kw">all.equal</span>(xtwx_full, xtwx, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
 <span id="cb3-8"><a href="#cb3-8"></a><span class="co">#&gt; [1] TRUE</span></span>
 <span id="cb3-9"><a href="#cb3-9"></a></span>
-<span id="cb3-10"><a href="#cb3-10"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
-<span id="cb3-11"><a href="#cb3-11"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>X_full },</span>
-<span id="cb3-12"><a href="#cb3-12"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
-<span id="cb3-13"><a href="#cb3-13"></a>  <span class="dt">times =</span> 10L</span>
-<span id="cb3-14"><a href="#cb3-14"></a>)</span>
-<span id="cb3-15"><a href="#cb3-15"></a><span class="co">#&gt; Unit: microseconds</span></span>
-<span id="cb3-16"><a href="#cb3-16"></a><span class="co">#&gt;                 expr    min     lq   mean median     uq    max neval cld</span></span>
-<span id="cb3-17"><a href="#cb3-17"></a><span class="co">#&gt;           R mat mult 3106.4 3149.2 3611.5   3583 3916.4 4477.6    10   b</span></span>
-<span id="cb3-18"><a href="#cb3-18"></a><span class="co">#&gt;  C++ binned mat mult  218.2  227.5  280.9    246  306.6  517.7    10  a</span></span></code></pre></div>
+<span id="cb3-10"><a href="#cb3-10"></a>xtwx =<span class="st"> </span><span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w, <span class="ot">TRUE</span>)</span>
+<span id="cb3-11"><a href="#cb3-11"></a><span class="kw">all.equal</span>(xtwx_full, xtwx, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb3-12"><a href="#cb3-12"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb3-13"><a href="#cb3-13"></a></span>
+<span id="cb3-14"><a href="#cb3-14"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
+<span id="cb3-15"><a href="#cb3-15"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>X_full },</span>
+<span id="cb3-16"><a href="#cb3-16"></a>  <span class="st">&quot;C++ mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">cppMatMultWeight</span>(X_full, w) },</span>
+<span id="cb3-17"><a href="#cb3-17"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w, <span class="ot">FALSE</span>) },</span>
+<span id="cb3-18"><a href="#cb3-18"></a>  <span class="st">&quot;C++ binned mat mult fast&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w, <span class="ot">TRUE</span>) },</span>
+<span id="cb3-19"><a href="#cb3-19"></a>  <span class="st">&quot;C++ binned mat mult fast sparse&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedSparseMatMult</span>(<span class="dt">X =</span> X_sparse, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
+<span id="cb3-20"><a href="#cb3-20"></a>  <span class="dt">times =</span> 10L</span>
+<span id="cb3-21"><a href="#cb3-21"></a>)</span>
+<span id="cb3-22"><a href="#cb3-22"></a><span class="co">#&gt; Unit: milliseconds</span></span>
+<span id="cb3-23"><a href="#cb3-23"></a><span class="co">#&gt;                             expr     min      lq    mean  median      uq     max neval cld</span></span>
+<span id="cb3-24"><a href="#cb3-24"></a><span class="co">#&gt;                       R mat mult 370.406 375.449 404.486 383.650 398.721 496.973    10  b </span></span>
+<span id="cb3-25"><a href="#cb3-25"></a><span class="co">#&gt;                     C++ mat mult 460.184 462.340 469.618 468.220 475.546 484.314    10   c</span></span>
+<span id="cb3-26"><a href="#cb3-26"></a><span class="co">#&gt;              C++ binned mat mult  24.163  24.351  25.525  24.974  25.974  28.226    10 a  </span></span>
+<span id="cb3-27"><a href="#cb3-27"></a><span class="co">#&gt;         C++ binned mat mult fast   4.274   6.552   6.878   7.103   7.838   8.145    10 a  </span></span>
+<span id="cb3-28"><a href="#cb3-28"></a><span class="co">#&gt;  C++ binned mat mult fast sparse   3.875   4.018  18.318   5.960   7.101 124.082    10 a</span></span></code></pre></div>
+</div>
+<div id="adaptions" class="section level4">
+<h4>Adaptions</h4>
+<ul>
+<li>Sum up weights and then multiply columns with cumulated weights <code>mat mult fast</code></li>
+</ul>
 </div>
 </div>
 <div id="compute-matrix-product-w.r.t.-response" class="section level3">
@@ -247,42 +328,63 @@ X = \left(\begin{array}{c}
 <li>For <span class="math inline">\(i = 1, \dots, n\)</span> do <span class="math inline">\(u \mathrel{{+}{=}} w(i)y(i)\bar{X}(i,)\)</span></li>
 <li>Return <span class="math inline">\(u\)</span></li>
 </ol>
+<p>Small adaption to make the algorithm even faster (for diagonal <span class="math inline">\(W\)</span>). This reduces the <span class="math inline">\(n\)</span> vector addition in every step to one matrix multiplication with <span class="math inline">\(\bar{n}\)</span> vector additions:</p>
+<ol style="list-style-type: decimal">
+<li>Set <span class="math inline">\(w_c = \vec{0} \in \mathbb{R}^{\bar{n}}\)</span></li>
+<li>For <span class="math inline">\(i = 1, \dots, n\)</span> do <span class="math inline">\(w_c\mathrel{{+}{=}} w(i)y(i)\)</span></li>
+<li>Return <span class="math inline">\(\bar{X} w_c\)</span></li>
+</ol>
 <div id="microbenchmark-1" class="section level4">
 <h4>Microbenchmark</h4>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>y =<span class="st"> </span><span class="kw">runif</span>(nsim)</span>
-<span id="cb4-2"><a href="#cb4-2"></a></span>
-<span id="cb4-3"><a href="#cb4-3"></a>out =<span class="st"> </span><span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> <span class="dv">1</span>)</span>
-<span id="cb4-4"><a href="#cb4-4"></a>out_full =<span class="st"> </span><span class="kw">t</span>(X_full) <span class="op">%*%</span><span class="st"> </span>y</span>
-<span id="cb4-5"><a href="#cb4-5"></a></span>
-<span id="cb4-6"><a href="#cb4-6"></a><span class="kw">all.equal</span>(out, out_full, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
-<span id="cb4-7"><a href="#cb4-7"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb4-8"><a href="#cb4-8"></a></span>
-<span id="cb4-9"><a href="#cb4-9"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
-<span id="cb4-10"><a href="#cb4-10"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full) <span class="op">%*%</span><span class="st"> </span>y },</span>
-<span id="cb4-11"><a href="#cb4-11"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> <span class="dv">1</span>) },</span>
-<span id="cb4-12"><a href="#cb4-12"></a>  <span class="dt">times =</span> 10L</span>
-<span id="cb4-13"><a href="#cb4-13"></a>)</span>
-<span id="cb4-14"><a href="#cb4-14"></a><span class="co">#&gt; Unit: microseconds</span></span>
-<span id="cb4-15"><a href="#cb4-15"></a><span class="co">#&gt;                 expr   min    lq  mean median     uq    max neval cld</span></span>
-<span id="cb4-16"><a href="#cb4-16"></a><span class="co">#&gt;           R mat mult 877.5 891.2 951.4  933.8 1006.1 1068.6    10   b</span></span>
-<span id="cb4-17"><a href="#cb4-17"></a><span class="co">#&gt;  C++ binned mat mult 212.1 219.8 231.0  229.3  241.1  258.9    10  a</span></span>
-<span id="cb4-18"><a href="#cb4-18"></a></span>
-<span id="cb4-19"><a href="#cb4-19"></a></span>
-<span id="cb4-20"><a href="#cb4-20"></a>out =<span class="st"> </span><span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)</span>
-<span id="cb4-21"><a href="#cb4-21"></a>out_full =<span class="st"> </span><span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y</span>
-<span id="cb4-22"><a href="#cb4-22"></a></span>
-<span id="cb4-23"><a href="#cb4-23"></a><span class="kw">all.equal</span>(out, out_full, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
-<span id="cb4-24"><a href="#cb4-24"></a><span class="co">#&gt; [1] TRUE</span></span>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>out =<span class="st"> </span><span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> <span class="dv">1</span>)</span>
+<span id="cb4-2"><a href="#cb4-2"></a>out_full =<span class="st"> </span><span class="kw">t</span>(X_full) <span class="op">%*%</span><span class="st"> </span>y</span>
+<span id="cb4-3"><a href="#cb4-3"></a></span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="kw">all.equal</span>(out, out_full, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb4-5"><a href="#cb4-5"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb4-6"><a href="#cb4-6"></a></span>
+<span id="cb4-7"><a href="#cb4-7"></a>out_sp =<span class="st"> </span><span class="kw">binnedSparseMatMultResponse</span>(<span class="dt">X =</span> X_sparse, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> <span class="dv">1</span>)</span>
+<span id="cb4-8"><a href="#cb4-8"></a>out_sp[<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>]</span>
+<span id="cb4-9"><a href="#cb4-9"></a><span class="co">#&gt;  [1]   977.2 13508.4 27562.5 31000.8 31428.3 32562.1 28161.5 24592.8 29621.7 28994.0</span></span>
+<span id="cb4-10"><a href="#cb4-10"></a>out_full[<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>]</span>
+<span id="cb4-11"><a href="#cb4-11"></a><span class="co">#&gt;  [1]   977.2 13508.4 27562.5 31000.8 31428.3 32562.1 28161.5 24592.8 29621.7 28994.0</span></span>
+<span id="cb4-12"><a href="#cb4-12"></a></span>
+<span id="cb4-13"><a href="#cb4-13"></a></span>
+<span id="cb4-14"><a href="#cb4-14"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
+<span id="cb4-15"><a href="#cb4-15"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full) <span class="op">%*%</span><span class="st"> </span>y },</span>
+<span id="cb4-16"><a href="#cb4-16"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> <span class="dv">1</span>) },</span>
+<span id="cb4-17"><a href="#cb4-17"></a>  <span class="st">&quot;C++ binned mat mult sparse&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedSparseMatMultResponse</span>(<span class="dt">X =</span> X_sparse, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> <span class="dv">1</span>) },</span>
+<span id="cb4-18"><a href="#cb4-18"></a>  <span class="dt">times =</span> 10L</span>
+<span id="cb4-19"><a href="#cb4-19"></a>)</span>
+<span id="cb4-20"><a href="#cb4-20"></a><span class="co">#&gt; Unit: milliseconds</span></span>
+<span id="cb4-21"><a href="#cb4-21"></a><span class="co">#&gt;                        expr    min     lq   mean median     uq    max neval cld</span></span>
+<span id="cb4-22"><a href="#cb4-22"></a><span class="co">#&gt;                  R mat mult 77.555 78.551 85.220 82.849 92.704 94.413    10   b</span></span>
+<span id="cb4-23"><a href="#cb4-23"></a><span class="co">#&gt;         C++ binned mat mult  3.016  3.038  3.734  3.423  4.583  4.633    10  a </span></span>
+<span id="cb4-24"><a href="#cb4-24"></a><span class="co">#&gt;  C++ binned mat mult sparse  3.003  3.031  4.056  4.529  4.640  4.658    10  a</span></span>
 <span id="cb4-25"><a href="#cb4-25"></a></span>
-<span id="cb4-26"><a href="#cb4-26"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
-<span id="cb4-27"><a href="#cb4-27"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y },</span>
-<span id="cb4-28"><a href="#cb4-28"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
-<span id="cb4-29"><a href="#cb4-29"></a>  <span class="dt">times =</span> 10L</span>
-<span id="cb4-30"><a href="#cb4-30"></a>)</span>
-<span id="cb4-31"><a href="#cb4-31"></a><span class="co">#&gt; Unit: microseconds</span></span>
-<span id="cb4-32"><a href="#cb4-32"></a><span class="co">#&gt;                 expr  min     lq   mean median     uq    max neval cld</span></span>
-<span id="cb4-33"><a href="#cb4-33"></a><span class="co">#&gt;           R mat mult 1446 1489.5 1598.9 1589.8 1698.0 1774.1    10   b</span></span>
-<span id="cb4-34"><a href="#cb4-34"></a><span class="co">#&gt;  C++ binned mat mult  216  220.4  233.3  232.4  241.4  262.8    10  a</span></span></code></pre></div>
+<span id="cb4-26"><a href="#cb4-26"></a></span>
+<span id="cb4-27"><a href="#cb4-27"></a>out =<span class="st"> </span><span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)</span>
+<span id="cb4-28"><a href="#cb4-28"></a>out_full =<span class="st"> </span><span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y</span>
+<span id="cb4-29"><a href="#cb4-29"></a></span>
+<span id="cb4-30"><a href="#cb4-30"></a><span class="kw">all.equal</span>(out, out_full, <span class="dt">check.attributes =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb4-31"><a href="#cb4-31"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb4-32"><a href="#cb4-32"></a></span>
+<span id="cb4-33"><a href="#cb4-33"></a>out_sp =<span class="st"> </span><span class="kw">binnedSparseMatMultResponse</span>(<span class="dt">X =</span> X_sparse, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)</span>
+<span id="cb4-34"><a href="#cb4-34"></a>out_sp[<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>]</span>
+<span id="cb4-35"><a href="#cb4-35"></a><span class="co">#&gt;  [1]  10338 142492 289671 325439 330445 341664 294439 257935 311839 304570</span></span>
+<span id="cb4-36"><a href="#cb4-36"></a>out_full[<span class="dv">1</span><span class="op">:</span><span class="dv">10</span>]</span>
+<span id="cb4-37"><a href="#cb4-37"></a><span class="co">#&gt;  [1]  10338 142492 289671 325439 330445 341664 294439 257935 311839 304570</span></span>
+<span id="cb4-38"><a href="#cb4-38"></a></span>
+<span id="cb4-39"><a href="#cb4-39"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
+<span id="cb4-40"><a href="#cb4-40"></a>  <span class="st">&quot;R mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y },</span>
+<span id="cb4-41"><a href="#cb4-41"></a>  <span class="st">&quot;C++ binned mat mult&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
+<span id="cb4-42"><a href="#cb4-42"></a>  <span class="st">&quot;C++ binned mat mult sparse&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedSparseMatMultResponse</span>(<span class="dt">X =</span> X_sparse, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
+<span id="cb4-43"><a href="#cb4-43"></a>  <span class="dt">times =</span> 10L</span>
+<span id="cb4-44"><a href="#cb4-44"></a>)</span>
+<span id="cb4-45"><a href="#cb4-45"></a><span class="co">#&gt; Unit: milliseconds</span></span>
+<span id="cb4-46"><a href="#cb4-46"></a><span class="co">#&gt;                        expr     min      lq    mean  median      uq     max neval cld</span></span>
+<span id="cb4-47"><a href="#cb4-47"></a><span class="co">#&gt;                  R mat mult 138.193 149.521 191.864 151.688 255.490 262.296    10   b</span></span>
+<span id="cb4-48"><a href="#cb4-48"></a><span class="co">#&gt;         C++ binned mat mult   4.076   4.189   5.357   4.383   6.456   8.022    10  a </span></span>
+<span id="cb4-49"><a href="#cb4-49"></a><span class="co">#&gt;  C++ binned mat mult sparse   4.135   4.207   5.504   4.269   7.391   7.973    10  a</span></span></code></pre></div>
 </div>
 </div>
 <div id="weighted-least-squares-microbenchmark" class="section level3">
@@ -297,32 +399,31 @@ X = \left(\begin{array}{c}
 <span id="cb5-8"><a href="#cb5-8"></a>microbenchmark<span class="op">::</span><span class="kw">microbenchmark</span>(</span>
 <span id="cb5-9"><a href="#cb5-9"></a>  <span class="st">&quot;Weighted OLS R&quot;</span> =<span class="st"> </span>{ <span class="kw">solve</span>(<span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>X_full) <span class="op">%*%</span><span class="st"> </span><span class="kw">t</span>(X_full <span class="op">*</span><span class="st"> </span>w) <span class="op">%*%</span><span class="st"> </span>y },</span>
 <span id="cb5-10"><a href="#cb5-10"></a>  <span class="st">&quot;Weighted OLS binned&quot;</span> =<span class="st"> </span>{ <span class="kw">binnedMatMultResponse</span>(<span class="dt">X =</span> X, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) <span class="op">%*%</span><span class="st"> </span><span class="kw">solve</span>(<span class="kw">binnedMatMult</span>(<span class="dt">X =</span> X, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)) },</span>
-<span id="cb5-11"><a href="#cb5-11"></a>  <span class="dt">times =</span> 5L</span>
-<span id="cb5-12"><a href="#cb5-12"></a>)</span>
-<span id="cb5-13"><a href="#cb5-13"></a><span class="co">#&gt; Unit: microseconds</span></span>
-<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt;                 expr  min     lq   mean median     uq    max neval cld</span></span>
-<span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt;       Weighted OLS R 6879 7548.2 8011.7 8174.8 8363.2 9093.0     5   b</span></span>
-<span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt;  Weighted OLS binned  546  547.3  605.9  552.4  655.1  728.8     5  a</span></span></code></pre></div>
+<span id="cb5-11"><a href="#cb5-11"></a>  <span class="st">&quot;Weighted OLS binned sparse&quot;</span> =<span class="st"> </span>{ <span class="kw">solve</span>(<span class="kw">binnedSparseMatMult</span>(<span class="dt">X =</span> X_sparse, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w)) <span class="op">%*%</span><span class="st"> </span><span class="kw">binnedSparseMatMultResponse</span>(<span class="dt">X =</span> X_sparse, <span class="dt">y =</span> y, <span class="dt">k =</span> k<span class="dv">-1</span>, <span class="dt">w =</span> w) },</span>
+<span id="cb5-12"><a href="#cb5-12"></a>  <span class="dt">times =</span> 5L</span>
+<span id="cb5-13"><a href="#cb5-13"></a>)</span>
+<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt; Unit: milliseconds</span></span>
+<span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt;                        expr     min     lq   mean median     uq     max neval cld</span></span>
+<span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt;              Weighted OLS R 782.585 785.64 854.89 790.30 911.15 1004.75     5   b</span></span>
+<span id="cb5-17"><a href="#cb5-17"></a><span class="co">#&gt;         Weighted OLS binned  34.606  34.91  57.33  35.03  35.13  146.98     5  a </span></span>
+<span id="cb5-18"><a href="#cb5-18"></a><span class="co">#&gt;  Weighted OLS binned sparse   8.129  10.10  12.47  14.44  14.62   15.04     5  a</span></span></code></pre></div>
 </div>
 </div>
 <div id="binning-numerical-features" class="section level2">
 <h2>Binning numerical features</h2>
 <p>The idea here is to discretize the vector <span class="math inline">\(x\in\mathbb{R}^n\)</span> to a vector <span class="math inline">\(\bar{x}\)</span> where the number of unique values <span class="math inline">\(\text{unique}(\bar{x}) = m_u &lt; n_u = \text{unique}(x)\)</span>. The vector <span class="math inline">\(\bar{x}\)</span> is then used for faster model matrix crossproducts as explained <a href="#faster-model-matrix-crossproducts-with-discretized-covariates">above</a>.</p>
-<ul>
-<li>How to best discretize?</li>
-<li>Small showcase in R</li>
-</ul>
-<div id="microbenchmark-2" class="section level3">
-<h3>Microbenchmark</h3>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">head</span>(iris)</span>
-<span id="cb6-2"><a href="#cb6-2"></a><span class="co">#&gt;   Sepal.Length Sepal.Width Petal.Length Petal.Width Species</span></span>
-<span id="cb6-3"><a href="#cb6-3"></a><span class="co">#&gt; 1          5.1         3.5          1.4         0.2  setosa</span></span>
-<span id="cb6-4"><a href="#cb6-4"></a><span class="co">#&gt; 2          4.9         3.0          1.4         0.2  setosa</span></span>
-<span id="cb6-5"><a href="#cb6-5"></a><span class="co">#&gt; 3          4.7         3.2          1.3         0.2  setosa</span></span>
-<span id="cb6-6"><a href="#cb6-6"></a><span class="co">#&gt; 4          4.6         3.1          1.5         0.2  setosa</span></span>
-<span id="cb6-7"><a href="#cb6-7"></a><span class="co">#&gt; 5          5.0         3.6          1.4         0.2  setosa</span></span>
-<span id="cb6-8"><a href="#cb6-8"></a><span class="co">#&gt; 6          5.4         3.9          1.7         0.4  setosa</span></span></code></pre></div>
-</div>
+<p>In “Generalized Additive Models for Gigadata: Modeling the U.K. Black Smoke Network Daily Data” they say to use a equidistant grid of <span class="math inline">\(m_u = \sqrt{n}\)</span> points.</p>
+<ol style="list-style-type: decimal">
+<li>Calculate <span class="math inline">\(x_1^\ast = \text{min}(x)\)</span> and <span class="math inline">\(x_{m_u}^\ast = \text{max}(x)\)</span> with <span class="math inline">\(m_u = \lfloor\sqrt{n}\rfloor\)</span></li>
+<li>Calculate <span class="math inline">\(x_1^\ast,\dots, x_{m_u}^\ast\)</span> and set <span class="math inline">\(\delta = x_2^\ast - x_1^\ast\)</span></li>
+<li>Calculate vector of indizes <span class="math inline">\(k(i)\)</span> (here <code>x_bins</code><span class="math inline">\(= x^\ast\)</span>):</li>
+</ol>
+<pre><code>for (i = 1, ..., n) do
+| while (x_bins(i) + delta &lt; x(i))
+| | j += 1;
+| endwhile
+| k(i) = j
+endfor</code></pre>
 </div>
 </div>
 </div>

@@ -21,7 +21,8 @@ devtools::load_all()
 - [Zheyuan Li, Simon N. Wood: "Faster model matrix crossproducts for large generalized linear models with discretized covariates"](https://link.springer.com/content/pdf/10.1007/s11222-019-09864-2.pdf)
 - [Lang et al.: "Multilevel structured additive regression"](https://link.springer.com/article/10.1007/s11222-012-9366-0)
     - First formulation of _binning_ (page 8, 3.3. remark 2)
-
+- [Simon N. Wood,  Zheyuan Li, Gavin  Shaddick, and Nicole H.  Augustin: "Generalized Additive Models for Gigadata: Modeling the U.K. Black Smoke Network Daily Data"](https://amstat.tandfonline.com/doi/full/10.1080/01621459.2016.1195744#.XoHEQClfiWg)
+    - Argumentation that $\sqrt{n}$ unique points are sufficient.
 
 # Goal
 
@@ -64,37 +65,76 @@ Again, we assume that $W$ has diagonal form $W = \text{diag}(w)$. The following 
 
 Instead of calculating $D$ we calculate directly $D^T$ to not do another transposing step.
 
-- Also think about sparse matrices, accessing columns is much more efficient than accessing rows (maybe use this).
-- Also show how to compute $X^Ty$ in this system
+Another adaption to reduce the number of vector additions (for diagonal $W$) is to accumulate the weights and do one matrix multiplication in the end:
+
+1. Set $w_c = \vec{0} \in \mathbb{R}^{\bar{n}}$
+1. For $i = 1, \dots, n$ do $w_c \mathrel{{+}{=}} w(i)$
+1. Return $(X \otimes w_c)^T X$
+
 
 #### Microbenchmark
 
-For small runtime comparison we simulate $n = 10^6$ x values that are used for polynomial regression of degree 20. The number of unique values are $\sqrt{n}$:
+For small runtime comparison we simulate $n = 10^6$ x values that are used for cubic spline regression of degree 16 (20 parameter). The number of unique values are $\sqrt{n}$:
+M
 
 ```{r}
-nsim = 1e4L
+nsim = 1e6L
 nunique = trunc(sqrt(nsim))
 
+# Sample data:
 xunique = runif(n = nunique, min = 0, max = 10)
 k = sample(x = seq_len(nunique), size = nsim, replace = TRUE)
 
-X = poly(x = xunique, degree = 20L)
+# Calculate knots of given x values:
+knots = compboostSplines::createKnots(values = xunique, n_knots = 16, degree = 3)
+
+# Create basis using that knots:
+X = compboostSplines::createSplineBasis(values = xunique, degree = 3, knots = knots)
+# We assume matrix to be stored transposed (this is the case in compboost):
+X_sparse = Matrix::t(compboostSplines::createSparseSplineBasis(values = xunique, degree = 3, knots = knots))
 X_full = X[k,]
+
+
+# Define C++ matrix multiplication for comparison:
+code_mat_mult = "
+arma::mat cppMatMult (const arma::mat& X) {
+  return arma::trans(X) * X;
+}
+"
+code_mat_mult_weight = "
+arma::mat cppMatMultWeight (const arma::mat& X, const arma::vec& w) {
+  return arma::trans(X.each_col() % w) * X;
+}
+"
+
+Rcpp::cppFunction(code = code_mat_mult, depends = "RcppArmadillo")
+Rcpp::cppFunction(code = code_mat_mult_weight, depends = "RcppArmadillo")
+
 ```
 
-First we look at the case without weights. Here, the weights are initialized as 1:
+First we look at the case without weights. Here, the weights are initialized as 1. __Note__ The cpp matrix multiplication is not very fair since the conversion of the R matrix to C++ is also not for free:
 ```{r}
 # We have equal weights in this case:
 w = 1
 
 xtx_full = t(X_full) %*% X_full
-xtx = binnedMatMult(X = X, k = k-1, w = w)
 
+xtx = binnedMatMult(X = X, k = k-1, w = w, FALSE)
 all.equal(xtx_full, xtx, check.attributes = FALSE)
+
+xtx = binnedMatMult(X = X, k = k-1, w = w, TRUE)
+all.equal(xtx_full, xtx, check.attributes = FALSE)
+
+xtx_sp = binnedSparseMatMult(X = X_sparse, k = k-1, w = w)
+xtx_sp[1:10, 1:10]
+xtx_full[1:10, 1:10]
 
 microbenchmark::microbenchmark(
   "R mat mult" = { t(X_full) %*% X_full },
-  "C++ binned mat mult" = { binnedMatMult(X = X, k = k-1, w = w) },
+  "C++ mat mult" = { cppMatMult(X_full) },
+  "C++ binned mat mult" = { binnedMatMult(X = X, k = k-1, w = w, FALSE) },
+  "C++ binned mat mult fast" = { binnedMatMult(X = X, k = k-1, w = w, TRUE) },
+  "C++ binned mat mult fast sparse" = { binnedSparseMatMult(X = X_sparse, k = k-1, w = w) },
   times = 10L
 )
 ```
@@ -105,17 +145,26 @@ The next case is the case with weights:
 w = sample(x = seq_len(20L), size = nsim, replace = TRUE)
 
 xtwx_full = t(X_full * w)  %*% X_full
-xtwx = binnedMatMult(X = X, k = k-1, w = w)
 
+xtwx = binnedMatMult(X = X, k = k-1, w = w, FALSE)
+all.equal(xtwx_full, xtwx, check.attributes = FALSE)
+
+xtwx = binnedMatMult(X = X, k = k-1, w = w, TRUE)
 all.equal(xtwx_full, xtwx, check.attributes = FALSE)
 
 microbenchmark::microbenchmark(
   "R mat mult" = { t(X_full * w) %*% X_full },
-  "C++ binned mat mult" = { binnedMatMult(X = X, k = k-1, w = w) },
+  "C++ mat mult" = { cppMatMultWeight(X_full, w) },
+  "C++ binned mat mult" = { binnedMatMult(X = X, k = k-1, w = w, FALSE) },
+  "C++ binned mat mult fast" = { binnedMatMult(X = X, k = k-1, w = w, TRUE) },
+  "C++ binned mat mult fast sparse" = { binnedSparseMatMult(X = X_sparse, k = k-1, w = w) },
   times = 10L
 )
 ```
 
+#### Adaptions
+
+- Sum up weights and then multiply columns with cumulated weights `mat mult fast`
 
 ### Compute matrix product w.r.t. response
 
@@ -125,19 +174,30 @@ The aim is to use binning for component-wise boosting. The problem here is, that
 1. For $i = 1, \dots, n$ do $u \mathrel{{+}{=}} w(i)y(i)\bar{X}(i,)$
 1. Return $u$
 
+Small adaption to make the algorithm even faster (for diagonal $W$). This reduces the $n$ vector addition in every step to one matrix multiplication with $\bar{n}$ vector additions:
+
+1. Set $w_c = \vec{0} \in \mathbb{R}^{\bar{n}}$
+1. For $i = 1, \dots, n$ do $w_c\mathrel{{+}{=}} w(i)y(i)$
+1. Return $\bar{X} w_c$
+
+
 #### Microbenchmark
 
 ```{r}
-y = runif(nsim)
-
 out = binnedMatMultResponse(X = X, y = y, k = k-1, w = 1)
 out_full = t(X_full) %*% y
 
 all.equal(out, out_full, check.attributes = FALSE)
 
+out_sp = binnedSparseMatMultResponse(X = X_sparse, y = y, k = k-1, w = 1)
+out_sp[1:10]
+out_full[1:10]
+
+
 microbenchmark::microbenchmark(
   "R mat mult" = { t(X_full) %*% y },
   "C++ binned mat mult" = { binnedMatMultResponse(X = X, y = y, k = k-1, w = 1) },
+  "C++ binned mat mult sparse" = { binnedSparseMatMultResponse(X = X_sparse, y = y, k = k-1, w = 1) },
   times = 10L
 )
 
@@ -147,9 +207,14 @@ out_full = t(X_full * w) %*% y
 
 all.equal(out, out_full, check.attributes = FALSE)
 
+out_sp = binnedSparseMatMultResponse(X = X_sparse, y = y, k = k-1, w = w)
+out_sp[1:10]
+out_full[1:10]
+
 microbenchmark::microbenchmark(
   "R mat mult" = { t(X_full * w) %*% y },
   "C++ binned mat mult" = { binnedMatMultResponse(X = X, y = y, k = k-1, w = w) },
+  "C++ binned mat mult sparse" = { binnedSparseMatMultResponse(X = X_sparse, y = y, k = k-1, w = w) },
   times = 10L
 )
 ```
@@ -168,6 +233,7 @@ all.equal(t(beta), beta_full, check.attributes = FALSE)
 microbenchmark::microbenchmark(
   "Weighted OLS R" = { solve(t(X_full * w) %*% X_full) %*% t(X_full * w) %*% y },
   "Weighted OLS binned" = { binnedMatMultResponse(X = X, y = y, k = k-1, w = w) %*% solve(binnedMatMult(X = X, k = k-1, w = w)) },
+  "Weighted OLS binned sparse" = { solve(binnedSparseMatMult(X = X_sparse, k = k-1, w = w)) %*% binnedSparseMatMultResponse(X = X_sparse, y = y, k = k-1, w = w) },
   times = 5L
 )
 ```
@@ -176,12 +242,20 @@ microbenchmark::microbenchmark(
 
 The idea here is to discretize the vector $x\in\mathbb{R}^n$ to a vector $\bar{x}$ where the number of unique values $\text{unique}(\bar{x}) = m_u < n_u = \text{unique}(x)$. The vector $\bar{x}$ is then used for faster model matrix crossproducts as explained [above](#faster-model-matrix-crossproducts-with-discretized-covariates).
 
-- How to best discretize?
-- Small showcase in R
+In "Generalized Additive Models for Gigadata: Modeling the U.K. Black Smoke Network Daily Data" they say to use a equidistant grid of $m_u = \sqrt{n}$ points.
 
-### Microbenchmark
-
-```{r}
-head(iris)
+1. Calculate $x_1^\ast = \text{min}(x)$ and $x_{m_u}^\ast = \text{max}(x)$ with $m_u = \lfloor\sqrt{n}\rfloor$
+1. Calculate $x_1^\ast,\dots, x_{m_u}^\ast$ and set $\delta = x_2^\ast - x_1^\ast$
+1. Calculate vector of indizes $k(i)$ (here `x_bins`$= x^\ast$):
 ```
+for (i = 1, ..., n) do
+| while (x_bins(i) + delta < x(i))
+| | j += 1;
+| endwhile
+| k(i) = j
+endfor
+```
+
+
+
 
