@@ -3,6 +3,7 @@
 export(binnedMatMult)
 export(binnedMatMultResponse)
 export(binnedSparseMatMult)
+export(binnedSparseMatMultResponse)
 import(Matrix)
 import(Rcpp)
 import(RcppArmadillo)

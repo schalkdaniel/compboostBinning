@@ -17,7 +17,7 @@ Index vector for mapping to original matrix $X_o(i,) = X(k(i),.)$.}
 Vector of weights that are accumulated.}
 
 \item{use_fast_acc}{[\code{bool}]\cr
-Flag to indicate whether to use a faster weight accumulation.}
+Flag to indicate whether to use the original or adopted algorithm.}
 }
 \value{
 \code{arma::mat} Matrix Product $X^TWX$.

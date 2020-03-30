@@ -12,7 +12,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
-devtools::load_all()
+# devtools::load_all("..")
 ```
 
 
@@ -85,6 +85,8 @@ nunique = trunc(sqrt(nsim))
 xunique = runif(n = nunique, min = 0, max = 10)
 k = sample(x = seq_len(nunique), size = nsim, replace = TRUE)
 
+y = 2 * sin(xunique) + rnorm(nsim, 0, 0.5)
+
 # Calculate knots of given x values:
 knots = compboostSplines::createKnots(values = xunique, n_knots = 16, degree = 3)
 
@@ -109,7 +111,6 @@ arma::mat cppMatMultWeight (const arma::mat& X, const arma::vec& w) {
 
 Rcpp::cppFunction(code = code_mat_mult, depends = "RcppArmadillo")
 Rcpp::cppFunction(code = code_mat_mult_weight, depends = "RcppArmadillo")
-
 ```
 
 First we look at the case without weights. Here, the weights are initialized as 1. __Note__ The cpp matrix multiplication is not very fair since the conversion of the R matrix to C++ is also not for free:

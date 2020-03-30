@@ -47,6 +47,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// binnedSparseMatMultResponse
+arma::mat binnedSparseMatMultResponse(const arma::sp_mat& X, const arma::vec& y, const arma::uvec& k, const arma::vec& w);
+RcppExport SEXP _compboostBinning_binnedSparseMatMultResponse(SEXP XSEXP, SEXP ySEXP, SEXP kSEXP, SEXP wSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::sp_mat& >::type X(XSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type y(ySEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type k(kSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type w(wSEXP);
+    rcpp_result_gen = Rcpp::wrap(binnedSparseMatMultResponse(X, y, k, w));
+    return rcpp_result_gen;
+END_RCPP
+}
 // binVectorCustom
 arma::vec binVectorCustom(const arma::vec& x, const unsigned int n_bins);
 RcppExport SEXP _compboostBinning_binVectorCustom(SEXP xSEXP, SEXP n_binsSEXP) {
@@ -87,6 +101,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_compboostBinning_binnedMatMult", (DL_FUNC) &_compboostBinning_binnedMatMult, 4},
     {"_compboostBinning_binnedMatMultResponse", (DL_FUNC) &_compboostBinning_binnedMatMultResponse, 4},
     {"_compboostBinning_binnedSparseMatMult", (DL_FUNC) &_compboostBinning_binnedSparseMatMult, 3},
+    {"_compboostBinning_binnedSparseMatMultResponse", (DL_FUNC) &_compboostBinning_binnedSparseMatMultResponse, 4},
     {"_compboostBinning_binVectorCustom", (DL_FUNC) &_compboostBinning_binVectorCustom, 2},
     {"_compboostBinning_binVector", (DL_FUNC) &_compboostBinning_binVector, 1},
     {"_compboostBinning_calculateIndexVector", (DL_FUNC) &_compboostBinning_calculateIndexVector, 2},
