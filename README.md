@@ -1,13 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-[![Build
-Status](https://travis-ci.com/schalkdaniel/compboostBinning.svg?branch=master)](https://travis-ci.com/schalkdaniel/compboostBinning)
-[![AppVeyor build
-status](https://ci.appveyor.com/api/projects/status/github/schalkdaniel/compboostBinning?branch=master&svg=true)](https://ci.appveyor.com/project/schalkdaniel/compboostBinning)
-[![Coverage
-Status](https://coveralls.io/repos/github/schalkdaniel/compboostBinning/badge.svg?branch=master)](https://coveralls.io/github/schalkdaniel/compboostBinning?branch=master)
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](#license)
+[![Build Status](https://travis-ci.com/schalkdaniel/compboostBinning.svg?branch=master)](https://travis-ci.com/schalkdaniel/compboostBinning) [![AppVeyor build status](https://ci.appveyor.com/api/projects/status/github/schalkdaniel/compboostBinning?branch=master&svg=true)](https://ci.appveyor.com/project/schalkdaniel/compboostBinning) [![Coverage Status](https://coveralls.io/repos/github/schalkdaniel/compboostBinning/badge.svg?branch=master)](https://coveralls.io/github/schalkdaniel/compboostBinning?branch=master) [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](#license)
 
 ## C++ Binning Implementation of Compboost
 
