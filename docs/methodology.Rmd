@@ -221,6 +221,11 @@ microbenchmark::microbenchmark(
 ```
 
 
+### Remarks
+
+- Adaption also for prediction!
+
+
 ### Weighted least squares microbenchmark
 
 
